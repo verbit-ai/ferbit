@@ -80,19 +80,15 @@ async def main() -> None:
                     stream_response = client.send_message_streaming(streaming_request)
                     response_text = ""
                     
-                    async for chunk in stream_response:
-                        if hasattr(chunk, 'message') and chunk.message:
-                            if hasattr(chunk.message, 'parts') and chunk.message.parts:
-                                for part in chunk.message.parts:
-                                    if hasattr(part, 'text') and part.text:
-                                        print(part.text, end="", flush=True)
-                                        response_text += part.text
-                            elif hasattr(chunk.message, 'content') and chunk.message.content:
-                                print(chunk.message.content, end="", flush=True)
-                                response_text += chunk.message.content
-                        elif hasattr(chunk, 'content') and chunk.content:
-                            print(chunk.content, end="", flush=True)
-                            response_text += chunk.content
+                    async for chunk_stream in stream_response:
+                        chunk = chunk_stream.model_dump(mode='json', exclude_none=True)
+                        if 'result' in chunk and chunk['result']:
+                            result = chunk['result']
+                            if 'parts' in result and result['parts']:
+                                for part in result['parts']:
+                                    if 'kind' in part and part['kind'] == 'text' and 'text' in part:
+                                        print(part['text'], end="", flush=True)
+                                        response_text += part['text']
                     
                     if not response_text:
                         print("(No text response received)")
