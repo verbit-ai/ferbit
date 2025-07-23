@@ -6,15 +6,13 @@ import httpx
 
 from a2a.client import A2ACardResolver, A2AClient
 from a2a.types import (
-    AgentCard,
     MessageSendParams,
     SendStreamingMessageRequest,
 )
 
 
 async def main() -> None:
-    """Test client for AI Agent Task Manager - Stream only implementation"""
-    
+
     # Configure logging
     logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
     logger = logging.getLogger(__name__)
@@ -50,10 +48,7 @@ async def main() -> None:
             
             test_messages = [
                 "What agents are available and what can they do?",
-                "Which agent can handle LinkedIn profile scraping?", 
-                "Assign this task to the most suitable agent: I need to analyze GitHub repositories",
-                "Route this request to the github_agent: Please analyze the repository structure",
-                "Break down this complex task: I need to scrape LinkedIn profiles and analyze them with AI"
+                "I need for additional information about particular case named - Johnny Depp and Amber Heard",
             ]
             
             for i, message_text in enumerate(test_messages, 1):
