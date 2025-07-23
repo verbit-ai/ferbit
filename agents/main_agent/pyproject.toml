@@ -1,0 +1,10 @@
+[project]
+name = "main-agent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "a2a-sdk>=0.2.16",
+    "pydantic-ai>=0.4.5",
+]
