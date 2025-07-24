@@ -12,8 +12,8 @@ def create_agent_card() -> AgentCard:
     task_management_skill = AgentSkill(
         id="task_manager",
         name="AI Agent Task Manager",
-        description="Manages and assigns tasks to a team of AI agents based on their capabilities. Analyzes task requirements and routes them to the most suitable agent in the registry. Coordinates complex tasks by breaking them down into smaller, manageable subtasks.",
-        tags=["task-management", "agent-coordination", "workflow", "delegation", "orchestration", "team-management", "routing", "analysis", "expertise", "search", ""],
+        description="Manages and assigns tasks to a team of AI agents based on their capabilities. Analyzes task requirements and routes them to the most suitable agent in the registry. Coordinates complex tasks by breaking them down into smaller, manageable subtasks. Also provides direct access to case timeline information including the Manning accident timeline.",
+        tags=["task-management", "agent-coordination", "workflow", "delegation", "orchestration", "team-management", "routing", "analysis", "expertise", "search", "timeline", "manning", "case-data"],
         examples=[
             "Find all deposition transcripts where the witness discussed the merger agreement",
             "What is the statute of limitations for breach of contract claims in California?",
@@ -23,7 +23,8 @@ def create_agent_card() -> AgentCard:
             "What are the key elements required to prove negligent misrepresentation?",
             "Search for any prior testimony by Dr. Smith in similar patent infringement cases",
             "Help me understand the discovery rules for electronically stored information",
-            "Find all references to the confidentiality agreement in witness depositions"
+            "Find all references to the confidentiality agreement in witness depositions",
+            "Show me the Manning Timeline for the accident case"
         ]
     )
 
