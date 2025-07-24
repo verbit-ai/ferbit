@@ -65,6 +65,13 @@ class TestRunner:
         env = os.environ.copy()
         env['MCP_SERVER_URL'] = 'http://localhost:8000/sse'
         
+        # Ensure OPENAI_API_KEY is set
+        if 'OPENAI_API_KEY' not in env:
+            raise RuntimeError(
+                "OPENAI_API_KEY environment variable is required for the search agent.\n"
+                "Please set it by running: export OPENAI_API_KEY='your-api-key-here'"
+            )
+        
         self.agent_process = subprocess.Popen(
             ["python", "main.py"],
             cwd=agent_dir,
