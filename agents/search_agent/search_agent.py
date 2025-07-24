@@ -1,17 +1,16 @@
 import os
 import uuid
 import logging
-import asyncio
 from uuid import UUID
 from typing import Any
 
 from langchain.chat_models import init_chat_model
-from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import HumanMessage
 from langgraph.prebuilt import create_react_agent
 from langgraph.checkpoint.memory import MemorySaver
 
 from mcp_tools import get_search_tools
+from keyword_generator import generate_legal_keywords
 
 
 if "OPENAI_API_KEY" not in os.environ:
@@ -71,7 +70,7 @@ class SearchAgent:
         config = {"configurable": {"thread_id": str(collection_id)}}
         
         # Generate extensive legal keywords for the search
-        legal_keywords = await self.generate_legal_keywords(query)
+        legal_keywords = await generate_legal_keywords(query)
         logger.info(f"[AINVOKE] Generated legal keywords: {legal_keywords}")
         print(f"Generated legal keywords: {legal_keywords}")
         
@@ -117,58 +116,6 @@ Provide a comprehensive answer based on the search results.
         
         logger.info(f"[STREAM] Completed streaming for query: '{query}'")
 
-    async def generate_legal_keywords(self, query: str) -> str:
-        """
-        Generate extensive keywords for legal deposition and case document searches.
-        Uses LLM to expand the query with relevant legal terminology and synonyms.
-        """
-        # Don't initialize MCP tools for keyword generation - only need LLM
-        
-        try:
-            logger.info(f"[KEYWORD_GEN] Starting keyword generation for query: {query}")
-            print(f"[DEBUG] Starting keyword generation for query: {query}")
-            
-            keyword_prompt = f"""Generate keywords for legal search: {query}
-
-Include: legal synonyms, deposition terms, case law terminology, procedural language, evidence terms.
-Format: comma-separated list only."""
-
-            logger.info(f"[KEYWORD_GEN] About to call LLM with prompt: {keyword_prompt}")
-            print(f"[DEBUG] About to call LLM...")
-            
-            messages = [HumanMessage(content=keyword_prompt)]
-            
-            # Direct LLM call with detailed logging
-            logger.info(f"[KEYWORD_GEN] Calling self.response_model.ainvoke...")
-            print(f"[DEBUG] Calling self.response_model.ainvoke...")
-            
-            # result = await self.response_model.ainvoke(messages)
-            result = ""
-
-            logger.info(f"[KEYWORD_GEN] Got response from LLM, type: {type(result)}")
-            print(f"[DEBUG] Got response from LLM, type: {type(result)}")
-            
-            if hasattr(result, 'content'):
-                keywords = result.content.strip()
-                logger.info(f"[KEYWORD_GEN] LLM Output - Generated keywords: {keywords}")
-                print(f"[DEBUG] Successfully generated keywords: {keywords}")
-                return keywords
-            else:
-                logger.error(f"[KEYWORD_GEN] Unexpected response format: {result}")
-                print(f"[DEBUG] Unexpected response format: {result}")
-                raise ValueError(f"Unexpected response format: {result}")
-            
-        except asyncio.TimeoutError as e:
-            fallback_keywords = f"{query}, legal case, deposition, testimony, evidence, witness, court document, legal proceeding"
-            logger.warning(f"[KEYWORD_GEN] Keyword generation timed out: {e}, using fallback: {fallback_keywords}")
-            print(f"[DEBUG] Keyword generation timed out: {e}, using fallback")
-            return fallback_keywords
-        except Exception as e:
-            fallback_keywords = f"{query}, legal case, deposition, testimony, evidence, witness, court document, legal proceeding"
-            logger.error(f"[KEYWORD_GEN] Error generating legal keywords: {type(e).__name__}: {e}, using fallback: {fallback_keywords}")
-            print(f"[DEBUG] Error generating legal keywords: {type(e).__name__}: {e}")
-            # Fallback to basic query expansion
-            return fallback_keywords
 
     async def run(self, collection_id: UUID, query: str):
         """Legacy method for backward compatibility"""
