@@ -13,16 +13,17 @@ def create_agent_card() -> AgentCard:
         id="task_manager",
         name="AI Agent Task Manager",
         description="Manages and assigns tasks to a team of AI agents based on their capabilities. Analyzes task requirements and routes them to the most suitable agent in the registry. Coordinates complex tasks by breaking them down into smaller, manageable subtasks.",
-        tags=["task-management", "agent-coordination", "workflow", "delegation", "orchestration", "team-management", "routing", "analysis"],
+        tags=["task-management", "agent-coordination", "workflow", "delegation", "orchestration", "team-management", "routing", "analysis", "expertise", "search", ""],
         examples=[
-            "Assign this task to the most suitable agent",
-            "Which agent can handle LinkedIn profile scraping?",
-            "Break down this complex task and assign to appropriate agents",
-            "Route this request to the github_agent",
-            "Coordinate between multiple agents for this workflow",
-            "Analyze this task and recommend the best agent",
-            "Manage task execution across the agent team",
-            "What agents are available and what can they do?"
+            "Find all deposition transcripts where the witness discussed the merger agreement",
+            "What is the statute of limitations for breach of contract claims in California?",
+            "Search for expert witness testimony about accounting practices in our case files",
+            "Can you explain the legal significance of the attorney-client privilege objection?",
+            "Find depositions where opposing counsel mentioned the Delaware incorporation documents",
+            "What are the key elements required to prove negligent misrepresentation?",
+            "Search for any prior testimony by Dr. Smith in similar patent infringement cases",
+            "Help me understand the discovery rules for electronically stored information",
+            "Find all references to the confidentiality agreement in witness depositions"
         ]
     )
 

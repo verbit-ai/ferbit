@@ -45,6 +45,12 @@ agent = Agent(
 
 @agent.system_prompt
 async def add_available_agents(ctx) -> str:
+    """
+        Add the available agents to the system prompt.
+
+        Returns:
+            str: A message listing the available agents.
+        """
     if not agent_registry:
         return "No agents are currently registered."
 
@@ -57,62 +63,64 @@ async def say_hello(ctx) -> str:
 
 
 async def communicate_with_agent(agent_url: str, message: str) -> str:
-        async with httpx.AsyncClient() as httpx_client:
-            try:
-                resolver = A2ACardResolver(
-                    httpx_client=httpx_client,
-                    base_url=agent_url,
-                )
-                agent_card = await resolver.get_agent_card()
-                client = A2AClient(
-                    httpx_client=httpx_client,
-                    agent_card=agent_card
-                )
+    """
+        Communicate with another agent using the A2A protocol.
 
-                user_message = Message(
-                    message_id=str(uuid4()),
-                    role=Role.user,
-                    parts=[TextPart(text=message)]
-                )
+        Args:
+            agent_url: The URL of the agent to communicate with
+            message: The message to send to the agent
 
-                # Create SendMessageRequest
-                request = SendMessageRequest(
-                    id=str(uuid4()),
-                    jsonrpc="2.0",
-                    method="message/send",
-                    params=MessageSendParams(message=user_message)
-                )
+        Returns:
+            The response from the agent
+    """
+    async with httpx.AsyncClient() as httpx_client:
+        try:
+            resolver = A2ACardResolver(
+                httpx_client=httpx_client,
+                base_url=agent_url,
+            )
+            agent_card = await resolver.get_agent_card()
+            client = A2AClient(
+                httpx_client=httpx_client,
+                agent_card=agent_card
+            )
 
-                response = await client.send_message(request)
-                return str(response)
+            user_message = Message(
+                message_id=str(uuid4()),
+                role=Role.agent,
+                parts=[TextPart(text=message)]
+            )
 
-                # message_payload = {
-                #     'message': {
-                #         'role': 'user',
-                #         'parts': [
-                #             {'kind': 'text', 'text': message}
-                #         ],
-                #         'messageId': uuid4().hex,
-                #     },
-                # }
-                #
-                # streaming_request = SendStreamingMessageRequest(
-                #     id=str(uuid4()),
-                #     params=MessageSendParams(**message_payload)
-                # )
-                #
-                # stream_response = client.send_message_streaming(streaming_request)
-                # return str(stream_response)
+            # Create SendMessageRequest
+            request = SendMessageRequest(
+                id=str(uuid4()),
+                jsonrpc="2.0",
+                method="message/send",
+                params=MessageSendParams(message=user_message)
+            )
 
-            except Exception as e:
-                import traceback
-                error_details = traceback.format_exc()
-                return f"Error communicating with agent: {e}\n\nFull traceback:\n{error_details}"
+            response = await client.send_message(request)
+            return str(response)
+
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            return f"Error communicating with agent: {e}\n\nFull traceback:\n{error_details}"
 
 
 
 @agent.tool
 async def send_message_to_agent(ctx, agent_name: str, message: str) -> str:
+    """
+        Send a message to another agent using the A2A protocol.
+
+        Args:
+            agent_name: The registered name of the agent
+            message: The message to send to the agent
+
+        Returns:
+            The response from the agent
+    """
     if agent_name not in agent_registry:
         available_agents = ", ".join(agent_registry.keys()) if agent_registry else "none"
         return f"Agent '{agent_name}' not found in registry. Available agents: {available_agents}"
