@@ -1,0 +1,61 @@
+version: "3.8"
+
+services:
+  opensearch-mcp:
+    build:
+      context: ./mcp/opensearch_mcp
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    networks:
+      - ferbit-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/sse"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  search-agent:
+    build:
+      context: ./agents/search_agent
+      dockerfile: Dockerfile
+    environment:
+      - MCP_SERVER_URL=http://opensearch-mcp:8000/sse
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    networks:
+      - ferbit-network
+    depends_on:
+      opensearch-mcp:
+        condition: service_healthy
+
+  expert-agent:
+    build:
+      context: ./agents/expert_agent
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8003"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    networks:
+      - ferbit-network
+
+  main-agent:
+    build:
+      context: ./agents/main_agent
+      dockerfile: Dockerfile
+    ports:
+      - "9111:9111"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SEARCH_AGENT_URL=search-agent:8001
+      - EXPERT_AGENT_URL=expert-agent:8003
+    networks:
+      - ferbit-network
+    depends_on:
+      - search-agent
+      - expert-agent
+
+networks:
+  ferbit-network:
+    driver: bridge

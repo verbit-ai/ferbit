@@ -2,16 +2,18 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY main.py .
-COPY pyproject.toml .
-COPY README.md .
-COPY uv.lock .
-
-RUN pip install --no-cache-dir pip --upgrade && \
-    pip install --no-cache-dir .
+RUN apt-get update && apt-get install -y \
+    curl \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir uv
+COPY pyproject.toml ./
+COPY uv.lock ./
+RUN uv sync --frozen
+COPY . .
 
 ENV PYTHONUNBUFFERED=1
 ENV OPENAI_API_KEY=""
 ENV MCP_SERVER_URL="http://localhost:8000/sse"
 
-CMD ["python", "main.py"]
+CMD ["uv", "run", "python", "main.py"]

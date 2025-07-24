@@ -3,6 +3,7 @@ from a2a.server.apps import A2AStarletteApplication
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.tasks import InMemoryTaskStore
 from a2a.types import AgentCard, AgentSkill, AgentCapabilities
+from starlette.middleware.cors import CORSMiddleware
 
 from agent_executor import TaskManagerAgentExecutor
 
@@ -56,6 +57,15 @@ def main():
         http_handler=request_handler
     )
     app = server_app_builder.build()
+
+    # Add CORS middleware for all clients and methods
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # Allow all origins
+        allow_credentials=True,
+        allow_methods=["*"],  # Allow all methods
+        allow_headers=["*"],  # Allow all headers
+    )
 
     print("Starting AI Agent Task Manager A2A Server...")
     print("Agent Card will be available at: http://localhost:9111/.well-known/agent.json")
