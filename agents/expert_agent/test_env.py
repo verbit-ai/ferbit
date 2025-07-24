@@ -29,10 +29,11 @@ for var in vars_to_check:
 
 print("-" * 30)
 
-# Test loading the ExpertAgent
+# Test loading the ExpertAgent and global agent
 try:
-    from main import ExpertAgent
+    from main import ExpertAgent, agent
     expert = ExpertAgent()
     print("✓ ExpertAgent initialized successfully!")
+    print(f"✓ Global agent created: {type(agent).__name__}")
 except Exception as e:
     print(f"✗ Error initializing ExpertAgent: {e}")
