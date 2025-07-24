@@ -34,11 +34,11 @@ class SearchResult(BaseModel):
 
 class SearchMCPServer:
     def __init__(self):
-        logger.info("[INIT] Initializing SearchMCPServer")
+        logger.info("[INIT] Initializing SearchMCPServer (no tunnel mode)")
         self.app = FastMCP("Search MCP Server")
         self.tunnel_process = None
         self.opensearch_client = None
-        self.setup_tunnel()
+        # Skip tunnel setup - assume tunnel is already established on host
         self.setup_opensearch_client()
         self.register_tools()
         
@@ -46,51 +46,17 @@ class SearchMCPServer:
         atexit.register(self.cleanup)
         logger.info("[INIT] SearchMCPServer initialization completed")
     
-    def setup_tunnel(self):
-        """Setup AWS SSM tunnel to OpenSearch"""
-        logger.info("[TUNNEL] Setting up AWS SSM tunnel to OpenSearch...")
-        print("Setting up AWS SSM tunnel to OpenSearch...")
-        
-        # Set AWS profile
-        os.environ['AWS_PROFILE'] = 'staging'
-        logger.info("[TUNNEL] AWS_PROFILE set to 'staging'")
-        
-        # Start SSM port forwarding session
-        cmd = [
-            'aws', '--region', 'eu-west-1', 'ssm', 'start-session',
-            '--target', 'i-041af79ea7c7d1f02',
-            '--document-name', 'AWS-StartPortForwardingSessionToRemoteHost',
-            '--parameters', '{"host":["vpc-opensearch-ferret-stagging-4fp5wiub5owfti2shyjkdfrday.eu-west-1.es.amazonaws.com"],"portNumber":["443"], "localPortNumber":["9201"]}'
-        ]
-        
-        logger.info(f"[TUNNEL] Executing SSM command: {' '.join(cmd[:4])}...")
-        
-        try:
-            self.tunnel_process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-            
-            logger.info("[TUNNEL] SSM process started, waiting 5 seconds for tunnel establishment...")
-            # Wait a bit for tunnel to establish
-            time.sleep(5)
-            logger.info("[TUNNEL] AWS SSM tunnel established on port 9201")
-            print("AWS SSM tunnel established on port 9201")
-            
-        except Exception as e:
-            logger.error(f"[TUNNEL] Failed to setup AWS SSM tunnel: {e}")
-            print(f"Failed to setup AWS SSM tunnel: {e}")
-            raise
-    
     def setup_opensearch_client(self):
         """Setup OpenSearch client"""
         logger.info("[OPENSEARCH] Setting up OpenSearch client...")
         
         try:
+            # Use environment variables for host and port, with defaults
+            opensearch_host = os.getenv('OPENSEARCH_HOST', 'localhost')
+            opensearch_port = int(os.getenv('OPENSEARCH_PORT', '9201'))
+            
             client_config = {
-                'hosts': [{'host': 'localhost', 'port': 9201}],
+                'hosts': [{'host': opensearch_host, 'port': opensearch_port}],
                 'http_compress': True,
                 'http_auth': None,
                 'use_ssl': True,
@@ -180,23 +146,7 @@ class SearchMCPServer:
     def cleanup(self):
         """Clean up resources"""
         logger.info("[CLEANUP] Starting cleanup process...")
-        
-        if self.tunnel_process:
-            logger.info("[CLEANUP] Terminating AWS SSM tunnel...")
-            print("Terminating AWS SSM tunnel...")
-            try:
-                self.tunnel_process.terminate()
-                self.tunnel_process.wait(timeout=10)
-                logger.info("[CLEANUP] AWS SSM tunnel terminated successfully")
-            except subprocess.TimeoutExpired:
-                logger.warning("[CLEANUP] Tunnel process did not terminate gracefully, forcing kill")
-                self.tunnel_process.kill()
-                self.tunnel_process.wait()
-            except Exception as e:
-                logger.error(f"[CLEANUP] Error during tunnel cleanup: {e}")
-        else:
-            logger.info("[CLEANUP] No tunnel process to clean up")
-        
+        # No tunnel to clean up in this version
         logger.info("[CLEANUP] Cleanup completed")
     
     def run(self):
@@ -216,7 +166,7 @@ class SearchMCPServer:
             self.cleanup()
 
 if __name__ == '__main__':
-    logger.info("[MAIN] Starting SearchMCPServer application...")
+    logger.info("[MAIN] Starting SearchMCPServer application (no tunnel mode)...")
     try:
         server = SearchMCPServer()
         server.run()
