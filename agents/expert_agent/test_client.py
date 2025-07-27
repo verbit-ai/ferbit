@@ -107,6 +107,12 @@ async def main() -> None:
                         "input_query": "What are my chances of winning this lawsuit?"
                     }
                 },
+                {
+                    "category": "Query Decomposition",
+                    "description": "Case outcome prediction - BAD",
+                    "expected_outcome": "negative",
+                    "message": {"input_query": "I want to have a deposition in Johnny Depp and Amber Heard case, based on the context of the case - what should I ask the defendant?"}
+                },
                 
                 # ========== SEARCH VALIDATION TESTS ==========
                 # Good results (answered_in_full = true) - complete responses

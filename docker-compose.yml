@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   opensearch-mcp:
     build:
@@ -7,6 +5,10 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    environment:
+      - NO_TUNNEL=true
+      - OPENSEARCH_HOST=host.docker.internal
+      - OPENSEARCH_PORT=9201
     networks:
       - ferbit-network
     healthcheck:
@@ -20,6 +22,8 @@ services:
     build:
       context: ./agents/search_agent
       dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
     environment:
       - MCP_SERVER_URL=http://opensearch-mcp:8000/sse
       - OPENAI_API_KEY=${OPENAI_API_KEY}
