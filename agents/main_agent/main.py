@@ -17,24 +17,22 @@ EXPERT_AGENT_URL = os.getenv("EXPERT_AGENT_URL", "localhost:8003")
 
 agent_registry: Dict[str, str] = {
     "expert_agent": f"http://{EXPERT_AGENT_URL}",
-    # "search_agent": f"http://{SEARCH_AGENT_URL}"
+    "search_agent": f"http://{SEARCH_AGENT_URL}"
 }
 
 load_dotenv()
 agent = Agent(
     "openai:gpt-4o",
     system_prompt="""
-        Your name is Ferbiy
+        Your name is Ferbit
         You are a manager of a team of AI agents.
         Your task is to assign tasks to the agents based on their capabilities.
         You will receive a task description and a list of agents with their capabilities.
 
         You will analyze the task and assign it to the most suitable agent.
-        If no agent is suitable, you will respond with "No suitable agent found".
+        If no agent is suitable, you will try to provide a solution to the task by yourself.
         Always provide a clear and concise response.
         If you need to ask for more information, do so in a clear and concise manner.
-        Always provide the date and time of the request.
-        The date and time should be in the format: YYYY-MM-DD HH:MM:SS
 
         You talk to the agents using the A2A protocol.
         The agents will respond with their results.
@@ -67,10 +65,10 @@ async def say_hello(ctx) -> str:
 async def get_manning_timeline(ctx, query: str) -> str:
     """
     Return Manning timeline information when query contains both 'Manning' and 'Timeline'.
-    
+
     Args:
         query: The user's query to check for Manning and Timeline keywords
-        
+
     Returns:
         Timeline information if both keywords are present, otherwise a message indicating no match
     """

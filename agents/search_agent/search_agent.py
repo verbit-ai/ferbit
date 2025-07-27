@@ -38,7 +38,7 @@ class SearchAgent:
         self.response_model = response_model
         self.graph = None
         self._initialized = False
-        
+
     async def _initialize_if_needed(self):
         """Initialize the agent with MCP tools if not already done"""
         if not self._initialized:
@@ -47,7 +47,7 @@ class SearchAgent:
             print(f"🔧 SearchAgent initialized with {len(search_tools)} tools")
             for tool in search_tools:
                 print(f"  - {tool.name}: {tool.description}")
-            
+
             # Create LangGraph agent with MCP tools
             self.graph = create_react_agent(
                 self.response_model,
@@ -56,24 +56,24 @@ class SearchAgent:
             )
             self._initialized = True
 
-    async def ainvoke(self, query: str, collection_id: UUID = None) -> Any:
+    async def ainvoke(self, query: str, collection_id: UUID = "77ca74f6-c5c6-4505-ad57-499283826b87") -> Any:
         """Invoke the agent asynchronously"""
         logger.info(f"[AINVOKE] Starting search with query: '{query}', collection_id: {collection_id}")
-        
+
         await self._initialize_if_needed()
-        
+
         if collection_id is None:
             error_msg = "Error: collection_id is required for search operations. Please provide a valid collection_id."
             logger.error(f"[AINVOKE] {error_msg}")
             return error_msg
-            
+
         config = {"configurable": {"thread_id": str(collection_id)}}
-        
+
         # Generate extensive legal keywords for the search
         legal_keywords = await generate_legal_keywords(query)
         logger.info(f"[AINVOKE] Generated legal keywords: {legal_keywords}")
         print(f"Generated legal keywords: {legal_keywords}")
-        
+
         # Enhanced prompt to instruct the agent to use the search tool with generated keywords
         search_prompt = f"""
 You are a search agent with access to an OpenSearch database through the 'search' tool.
@@ -87,33 +87,33 @@ IMPORTANT: Use the search tool with index="{collection_id}" and incorporate the 
 Use both the original query and the expanded keywords for comprehensive search results.
 Provide a comprehensive answer based on the search results.
 """
-        
+
         logger.info(f"[AINVOKE] LLM Input - Search prompt: {search_prompt[:200]}...")
-        
+
         messages = [HumanMessage(content=search_prompt)]
         result = await self.graph.ainvoke({"messages": messages}, config)
-        
+
         final_result = result["messages"][-1].content
         logger.info(f"[AINVOKE] LLM Output - Final result: {final_result[:200]}...")
         logger.info(f"[AINVOKE] Completed search operation for query: '{query}'")
-        
+
         return final_result
 
     async def stream(self, query: str, context_id: str = None):
         """Stream agent responses"""
         logger.info(f"[STREAM] Starting stream with query: '{query}', context_id: {context_id}")
-        
+
         await self._initialize_if_needed()
-        
+
         config = {"configurable": {"thread_id": context_id or str(uuid.uuid4())}}
         messages = [HumanMessage(content=query)]
-        
+
         logger.info(f"[STREAM] LLM Input - Query: {query}")
-        
+
         async for chunk in self.graph.astream({"messages": messages}, config):
             logger.debug(f"[STREAM] Chunk received: {str(chunk)[:100]}...")
             yield chunk
-        
+
         logger.info(f"[STREAM] Completed streaming for query: '{query}'")
 
 
