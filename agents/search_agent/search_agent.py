@@ -86,7 +86,7 @@ Collection/Index to search: {collection_id}
 
 IMPORTANT: Use the search tool with index="{collection_id}" and incorporate the generated legal keywords to find relevant documents in legal depositions and case documents.
 Use both the original query and the expanded keywords for comprehensive search results.
-Provide a comprehensive answer based on the search results.
+Provide only a direct answer to the user's query based on the search results without elaboration or explanation.
 """
 
         logger.info(f"[AINVOKE] LLM Input - Search prompt: {search_prompt[:200]}...")
@@ -161,7 +161,7 @@ Collection/Index to search: {collection_id}
 
 IMPORTANT: Use the search tool with index="{collection_id}" and incorporate the generated legal keywords to find relevant documents in legal depositions and case documents.
 Use both the original query and the expanded keywords for comprehensive search results.
-Provide a comprehensive answer based on the search results.
+Provide only a direct answer to the user's query based on the search results without elaboration or explanation.
 """
 
         logger.info(f"[STREAM] LLM Input - Search prompt: {search_prompt[:200]}...")

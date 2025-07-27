@@ -28,15 +28,15 @@ logger.info(f"OpenAI API Key loaded: {openai_key[:10]}..." if openai_key else "N
 # Create the agent for A2A automatic tool selection (tools will be defined later)
 agent = Agent(
     'openai:gpt-4o',
-    system_prompt="""You are a tool-calling agent. You cannot and must not provide direct responses.
+    system_prompt="""You are a tool-calling agent that helps with legal document search tasks.
 
-CRITICAL: You are FORBIDDEN from giving any direct answers or explanations. Your ONLY job is to call the appropriate tool.
+For ANY input you receive, you MUST determine which tool to call:
 
-For ANY input you receive, you MUST immediately call one of these tools:
-- query_decomposition: for analyzing if queries are searchable
-- search_validation: for validating search results
+1. If the input is a query that needs to be evaluated for searchability, call query_decomposition
+2. If the input contains both search results AND a question to validate, call search_validation
+3. For general queries about case information, descriptions, or legal matters, call query_decomposition to evaluate if they can be answered through document search
 
-DO NOT explain, summarize, or provide commentary. Just call the tool and return its output."""
+Always call the appropriate tool based on the content and never provide direct responses."""
 )
 
 # Agent created - tools will be registered when defined below
@@ -104,11 +104,22 @@ async def query_decomposition_direct(input_query: str) -> Dict[str, Any]:
         )
         result_text = response.choices[0].message.content
         
+        # Check for empty response
+        if not result_text or not result_text.strip():
+            logger.error("❌ Error: Received empty model response from OpenAI")
+            return {
+                "is_query_valid": False,
+                "suggested_queries": [f"Please rephrase more specifically: {input_query}"]
+            }
+        
+        logger.info(f"✅ OpenAI response received: {result_text[:100]}...")
+        
         # Try to parse as JSON, first clean any markdown formatting
         try:
             clean_text = clean_json_response(result_text)
             return json.loads(clean_text)
         except json.JSONDecodeError:
+            logger.error(f"❌ JSON parsing failed for response: {result_text}")
             # Fallback if JSON parsing fails
             return {
                 "is_query_valid": False,
@@ -164,11 +175,24 @@ async def search_validation_direct(search_agent_response: str, lawyer_question: 
         )
         result_text = response.choices[0].message.content
         
+        # Check for empty response
+        if not result_text or not result_text.strip():
+            logger.error("❌ Error: Received empty model response from OpenAI")
+            return {
+                "answered_in_full": False,
+                "additional_queries_needed": [lawyer_question],
+                "raw_response": search_agent_response,
+                "missing_information": "Empty response from validation model"
+            }
+        
+        logger.info(f"✅ OpenAI validation response received: {result_text[:100]}...")
+        
         # Try to parse as JSON, first clean any markdown formatting
         try:
             clean_text = clean_json_response(result_text)
             return json.loads(clean_text)
         except json.JSONDecodeError:
+            logger.error(f"❌ JSON parsing failed for validation response: {result_text}")
             # Fallback if JSON parsing fails
             return {
                 "answered_in_full": False,

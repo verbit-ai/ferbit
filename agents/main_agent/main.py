@@ -53,6 +53,7 @@ agent = Agent(
         The agents will respond with their results.
 
         The idea is to use the agents to solve complex tasks by breaking them down into smaller tasks and assigning them to the agents.
+        You should use the different agents for one or more iterations to make sure the task was indeed completed. 
 
         """,
 )
