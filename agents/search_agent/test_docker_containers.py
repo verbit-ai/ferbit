@@ -29,10 +29,11 @@ async def test_search_agent_containers():
             return False
         print("✅ Search agent is ready")
         
-        # Step 2: Send search request
+        # Step 2: Send search request (agent uses streaming internally)
         print(f"🔍 Step 2: Sending search request...")
         print(f"   Query: '{test_query}'")
         print(f"   Collection ID: {collection_id}")
+        print("   Note: Agent will use streaming internally but return complete response")
         
         response = await client.search(test_query, collection_id)
         

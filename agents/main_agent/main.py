@@ -18,11 +18,17 @@ logger = logging.getLogger(__name__)
 
 from a2a.client import A2ACardResolver, A2AClient
 from a2a.types import (
-    MessageSendParams, Message, Role, TextPart, SendMessageRequest,
+    MessageSendParams, Message, Role, TextPart, SendMessageRequest, SendStreamingMessageRequest,
 )
 
 SEARCH_AGENT_URL = os.getenv("SEARCH_AGENT_URL", "localhost:8001")
 EXPERT_AGENT_URL = os.getenv("EXPERT_AGENT_URL", "localhost:8003")
+
+# Timeout configuration for agent communication
+AGENT_TIMEOUT_CONNECT = float(os.getenv("AGENT_TIMEOUT_CONNECT", "10.0"))    # 10 seconds
+AGENT_TIMEOUT_READ = float(os.getenv("AGENT_TIMEOUT_READ", "120.0"))         # 2 minutes  
+AGENT_TIMEOUT_WRITE = float(os.getenv("AGENT_TIMEOUT_WRITE", "10.0"))        # 10 seconds
+AGENT_TIMEOUT_POOL = float(os.getenv("AGENT_TIMEOUT_POOL", "10.0"))          # 10 seconds
 
 agent_registry: Dict[str, str] = {
     "expert_agent": f"http://{EXPERT_AGENT_URL}",
@@ -128,7 +134,16 @@ async def communicate_with_agent(agent_url: str, message: str) -> str:
         Returns:
             The response from the agent
     """
-    async with httpx.AsyncClient() as httpx_client:
+    # Use configurable timeout for agent communication (default 5s is too short for search operations)
+    timeout = httpx.Timeout(
+        connect=AGENT_TIMEOUT_CONNECT,  # Time to establish connection
+        read=AGENT_TIMEOUT_READ,        # Time to read response (search operations can be slow)
+        write=AGENT_TIMEOUT_WRITE,      # Time to send request
+        pool=AGENT_TIMEOUT_POOL         # Time to get connection from pool
+    )
+    
+    logger.info(f"Using timeout configuration: connect={AGENT_TIMEOUT_CONNECT}s, read={AGENT_TIMEOUT_READ}s, write={AGENT_TIMEOUT_WRITE}s, pool={AGENT_TIMEOUT_POOL}s")
+    async with httpx.AsyncClient(timeout=timeout) as httpx_client:
         try:
             resolver = A2ACardResolver(
                 httpx_client=httpx_client,
@@ -155,20 +170,60 @@ async def communicate_with_agent(agent_url: str, message: str) -> str:
                 parts=[TextPart(text=message)]
             )
 
-            # Create SendMessageRequest
-            request = SendMessageRequest(
-                id=str(uuid4()),
-                jsonrpc="2.0",
-                method="message/send",
-                params=MessageSendParams(message=user_message)
-            )
+            # Use streaming for better responsiveness with search operations
+            if "search" in agent_url.lower():
+                logger.info("🔄 Using streaming communication for search agent")
+                
+                # Create SendStreamingMessageRequest
+                streaming_request = SendStreamingMessageRequest(
+                    id=str(uuid4()),
+                    jsonrpc="2.0",
+                    method="message/stream",  
+                    params=MessageSendParams(message=user_message)
+                )
 
-            response = await client.send_message(request)
-            return str(response)
+                # Collect streaming response
+                response_parts = []
+                async for chunk in client.send_message_streaming(streaming_request):
+                    chunk_data = chunk.model_dump(mode='json', exclude_none=True)
+                    logger.debug(f"📦 Received streaming chunk: {str(chunk_data)[:100]}...")
+                    
+                    # Extract text from streaming chunks
+                    if 'result' in chunk_data and chunk_data['result']:
+                        result = chunk_data['result']
+                        if 'status' in result and 'message' in result['status']:
+                            message_parts = result['status']['message'].get('parts', [])
+                            for part in message_parts:
+                                if part.get('kind') == 'text' and part.get('text'):
+                                    response_parts.append(part['text'])
+                
+                # Combine all response parts
+                final_response = ''.join(response_parts) if response_parts else "No streaming response received"
+                logger.info(f"✅ Streaming communication completed, response length: {len(final_response)}")
+                return final_response
+                
+            else:
+                # Use regular communication for non-search agents
+                logger.info("📤 Using regular communication for non-search agent")
+                request = SendMessageRequest(
+                    id=str(uuid4()),
+                    jsonrpc="2.0",
+                    method="message/send",
+                    params=MessageSendParams(message=user_message)
+                )
+                response = await client.send_message(request)
+                return str(response)
 
+        except httpx.TimeoutException as e:
+            logger.error(f"⏰ Timeout communicating with agent at {agent_url}: {e}")
+            return f"Timeout communicating with agent at {agent_url}. The search operation may have taken longer than {AGENT_TIMEOUT_READ} seconds. Consider increasing AGENT_TIMEOUT_READ environment variable."
+        except httpx.ConnectError as e:
+            logger.error(f"🔌 Connection error communicating with agent at {agent_url}: {e}")
+            return f"Could not connect to agent at {agent_url}. Please ensure the agent is running and accessible."
         except Exception as e:
             import traceback
             error_details = traceback.format_exc()
+            logger.error(f"❌ Unexpected error communicating with agent at {agent_url}: {e}")
             return f"Error communicating with agent: {e}\n\nFull traceback:\n{error_details}"
 
 

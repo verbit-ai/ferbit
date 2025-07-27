@@ -57,11 +57,12 @@ class SearchAgent:
             self._initialized = True
 
     async def ainvoke(self, query: str, collection_id: UUID = "77ca74f6-c5c6-4505-ad57-499283826b87") -> Any:
-        """Invoke the agent asynchronously"""
+        """Invoke the agent asynchronously using streaming internally"""
         logger.info(f"[AINVOKE] Starting search with query: '{query}', collection_id: {collection_id}")
 
         await self._initialize_if_needed()
 
+        collection_id = "77ca74f6-c5c6-4505-ad57-499283826b87"
         if collection_id is None:
             error_msg = "Error: collection_id is required for search operations. Please provide a valid collection_id."
             logger.error(f"[AINVOKE] {error_msg}")
@@ -91,24 +92,81 @@ Provide a comprehensive answer based on the search results.
         logger.info(f"[AINVOKE] LLM Input - Search prompt: {search_prompt[:200]}...")
 
         messages = [HumanMessage(content=search_prompt)]
-        result = await self.graph.ainvoke({"messages": messages}, config)
+        
+        # Use streaming internally but collect all chunks for final result
+        logger.info(f"[AINVOKE] Using internal streaming to process request")
+        all_chunks = []
+        
+        async for chunk in self.graph.astream({"messages": messages}, config):
+            logger.debug(f"[AINVOKE] Received streaming chunk: {str(chunk)[:100]}...")
+            all_chunks.append(chunk)
+        
+        # Extract final result from the last chunk
+        if all_chunks:
+            final_chunk = all_chunks[-1]
+            
+            # Check for messages in standard format first
+            if "messages" in final_chunk and final_chunk["messages"]:
+                final_result = final_chunk["messages"][-1].content
+            # Check for messages in agent format (LangGraph structure)
+            elif "agent" in final_chunk and "messages" in final_chunk["agent"] and final_chunk["agent"]["messages"]:
+                final_result = final_chunk["agent"]["messages"][-1].content
+            else:
+                # Check all chunks for any messages
+                for chunk in all_chunks:
+                    if isinstance(chunk, dict) and "messages" in chunk and chunk["messages"]:
+                        final_result = chunk["messages"][-1].content
+                        break
+                    elif isinstance(chunk, dict) and "agent" in chunk and "messages" in chunk["agent"] and chunk["agent"]["messages"]:
+                        final_result = chunk["agent"]["messages"][-1].content
+                        break
+                else:
+                    final_result = "No response received from agent."
+        else:
+            final_result = "No chunks received from streaming."
 
-        final_result = result["messages"][-1].content
         logger.info(f"[AINVOKE] LLM Output - Final result: {final_result[:200]}...")
-        logger.info(f"[AINVOKE] Completed search operation for query: '{query}'")
+        logger.info(f"[AINVOKE] Completed search operation for query: '{query}' using {len(all_chunks)} streaming chunks")
 
         return final_result
 
-    async def stream(self, query: str, context_id: str = None):
+    async def stream(self, query: str, collection_id: UUID = "77ca74f6-c5c6-4505-ad57-499283826b87", context_id: str = None):
         """Stream agent responses"""
-        logger.info(f"[STREAM] Starting stream with query: '{query}', context_id: {context_id}")
+        logger.info(f"[STREAM] Starting stream with query: '{query}', collection_id: {collection_id}, context_id: {context_id}")
 
         await self._initialize_if_needed()
 
-        config = {"configurable": {"thread_id": context_id or str(uuid.uuid4())}}
-        messages = [HumanMessage(content=query)]
+        collection_id = "77ca74f6-c5c6-4505-ad57-499283826b87"
+        if collection_id is None:
+            error_msg = "Error: collection_id is required for search operations. Please provide a valid collection_id."
+            logger.error(f"[STREAM] {error_msg}")
+            yield {"error": error_msg}
+            return
 
-        logger.info(f"[STREAM] LLM Input - Query: {query}")
+        config = {"configurable": {"thread_id": context_id or str(collection_id)}}
+
+        # Generate extensive legal keywords for the search
+        legal_keywords = await generate_legal_keywords(query)
+        logger.info(f"[STREAM] Generated legal keywords: {legal_keywords}")
+        print(f"Generated legal keywords: {legal_keywords}")
+
+        # Enhanced prompt to instruct the agent to use the search tool with generated keywords
+        search_prompt = f"""
+You are a search agent with access to an OpenSearch database through the 'search' tool.
+You must use the search tool to find relevant documents for the user's query.
+
+Original user query: {query}
+Generated legal keywords: {legal_keywords}
+Collection/Index to search: {collection_id}
+
+IMPORTANT: Use the search tool with index="{collection_id}" and incorporate the generated legal keywords to find relevant documents in legal depositions and case documents.
+Use both the original query and the expanded keywords for comprehensive search results.
+Provide a comprehensive answer based on the search results.
+"""
+
+        logger.info(f"[STREAM] LLM Input - Search prompt: {search_prompt[:200]}...")
+
+        messages = [HumanMessage(content=search_prompt)]
 
         async for chunk in self.graph.astream({"messages": messages}, config):
             logger.debug(f"[STREAM] Chunk received: {str(chunk)[:100]}...")

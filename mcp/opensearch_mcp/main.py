@@ -52,8 +52,8 @@ class SearchMCPServer:
         print("Setting up AWS SSM tunnel to OpenSearch...")
         
         # Set AWS profile
-        os.environ['AWS_PROFILE'] = 'verbit-staging'
-        logger.info("[TUNNEL] AWS_PROFILE set to 'verbit-staging'")
+        os.environ['AWS_PROFILE'] = 'staging'
+        logger.info("[TUNNEL] AWS_PROFILE set to 'staging'")
         
         # Start SSM port forwarding session
         cmd = [
@@ -204,7 +204,7 @@ class SearchMCPServer:
         logger.info("[SERVER] Starting MCP server on port 8000 with SSE transport...")
         
         try:
-            self.app.run(transport="sse", port=8000)
+            self.app.run(transport="sse", host="0.0.0.0", port=8000)
         except KeyboardInterrupt:
             logger.info("[SERVER] Received keyboard interrupt, shutting down...")
             print("\nShutting down...")

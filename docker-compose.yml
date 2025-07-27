@@ -12,7 +12,7 @@ services:
     networks:
       - ferbit-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/sse"]
+      test: ["CMD", "curl", "-f", "--max-time", "2", "--head", "http://localhost:8000/sse/"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -54,6 +54,11 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - SEARCH_AGENT_URL=search-agent:8001
       - EXPERT_AGENT_URL=expert-agent:8003
+      # Timeout configuration for agent communication (search operations can be slow)
+      - AGENT_TIMEOUT_CONNECT=10.0
+      - AGENT_TIMEOUT_READ=180.0    # 3 minutes for search operations
+      - AGENT_TIMEOUT_WRITE=10.0
+      - AGENT_TIMEOUT_POOL=10.0
     networks:
       - ferbit-network
     depends_on:

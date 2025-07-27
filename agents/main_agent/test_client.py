@@ -41,7 +41,8 @@ async def main() -> None:
             test_messages = [
                 # "What agents are available and what can they do?",
                 # '{"input_query": "I want to have a deposition in Johnny Depp and Amber Heard case, based on the context of the case - what should I ask the defendant?"}',
-                "Please Search about manning case",
+                # "Please Search about manning case",
+                "can you describe mister Fredrick behaviour in short",
             ]
             
             for i, message_text in enumerate(test_messages, 1):
