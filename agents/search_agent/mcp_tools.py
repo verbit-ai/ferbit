@@ -13,7 +13,7 @@ class MCPClient:
     """MCP client wrapper for the search agent using LangChain MCP adapters"""
     
     def __init__(self, mcp_server_url: str = None):
-        self.mcp_server_url = mcp_server_url or os.environ.get('MCP_SERVER_URL', 'http://127.0.0.1:8000/sse/')
+        self.mcp_server_url = mcp_server_url or os.environ.get('MCP_SERVER_URL', 'http://127.0.0.1:8000/sse')
         self._client = None
         self._tools = None
     

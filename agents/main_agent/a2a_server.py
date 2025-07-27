@@ -1,3 +1,4 @@
+import logging
 import uvicorn
 from a2a.server.apps import A2AStarletteApplication
 from a2a.server.request_handlers import DefaultRequestHandler
@@ -6,6 +7,13 @@ from a2a.types import AgentCard, AgentSkill, AgentCapabilities
 from starlette.middleware.cors import CORSMiddleware
 
 from agent_executor import TaskManagerAgentExecutor
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 
 def create_agent_card() -> AgentCard:
@@ -69,10 +77,10 @@ def main():
         allow_headers=["*"],  # Allow all headers
     )
 
-    print("Starting AI Agent Task Manager A2A Server...")
-    print("Agent Card will be available at: http://localhost:9111/.well-known/agent.json")
-    print("Task management and agent coordination ready for your requests!")
-    print("Press CTRL+C to stop the server")
+    logger.info("Starting AI Agent Task Manager A2A Server...")
+    logger.info("Agent Card will be available at: http://localhost:9111/.well-known/agent.json")
+    logger.info("Task management and agent coordination ready for your requests!")
+    logger.info("Press CTRL+C to stop the server")
 
     uvicorn.run(
         app,

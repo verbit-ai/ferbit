@@ -52,8 +52,8 @@ class SearchMCPServer:
         print("Setting up AWS SSM tunnel to OpenSearch...")
         
         # Set AWS profile
-        os.environ['AWS_PROFILE'] = 'staging'
-        logger.info("[TUNNEL] AWS_PROFILE set to 'staging'")
+        os.environ['AWS_PROFILE'] = 'verbit-staging'
+        logger.info("[TUNNEL] AWS_PROFILE set to 'verbit-staging'")
         
         # Start SSM port forwarding session
         cmd = [

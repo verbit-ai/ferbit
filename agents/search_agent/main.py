@@ -18,7 +18,7 @@ async def main():
     print("Starting A2A Search Agent server on port 8001...")
     
     # Create agent card
-    agent_card = get_agent_card("localhost", 8001)
+    agent_card = get_agent_card("search-agent", 8001)
     
     # Create A2A components
     executor = SearchAgentExecutor()

@@ -12,7 +12,7 @@ from uuid import uuid4
 
 
 class SearchAgentClient:
-    def __init__(self, agent_url: str = "http://localhost:8001"):
+    def __init__(self, agent_url: str):
         self.agent_url = agent_url
         self.timeout = 60.0
     

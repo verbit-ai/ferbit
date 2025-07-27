@@ -1,11 +1,19 @@
 import os
 import asyncio
 import json
+import logging
 from typing import Dict, Any, List
 from pydantic import BaseModel
 from pydantic_ai import Agent, RunContext
 from dotenv import load_dotenv
 import openai
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -15,7 +23,7 @@ openai_key = os.environ.get('OPENAI_API_KEY')
 if not openai_key:
     raise ValueError("OPENAI_API_KEY environment variable is required")
 
-print(f"OpenAI API Key loaded: {openai_key[:10]}..." if openai_key else "No API key found")
+logger.info(f"OpenAI API Key loaded: {openai_key[:10]}..." if openai_key else "No API key found")
 
 # Create the agent for A2A automatic tool selection (tools will be defined later)
 agent = Agent(
@@ -107,7 +115,7 @@ async def query_decomposition_direct(input_query: str) -> Dict[str, Any]:
                 "suggested_queries": [f"Please rephrase: {input_query}"]
             }
     except Exception as e:
-        print(f"Error during query decomposition: {e}")
+        logger.error(f"Error during query decomposition: {e}")
         return {
             "is_query_valid": False,
             "suggested_queries": [f"Error processing query: {input_query}"]
@@ -169,7 +177,7 @@ async def search_validation_direct(search_agent_response: str, lawyer_question: 
                 "missing_information": "Could not parse validation response"
             }
     except Exception as e:
-        print(f"Error during search validation: {e}")
+        logger.error(f"Error during search validation: {e}")
         return {
             "answered_in_full": False,
             "additional_queries_needed": [lawyer_question],
@@ -184,7 +192,7 @@ async def query_decomposition(ctx: RunContext, input_text: str) -> str:
     Evaluates if user queries are valid for legal document search. Use this tool for ANY query evaluation.
     Input: plain text query or JSON with 'input_query' field.
     """
-    print("🔧 Query Decomposition selected")
+    logger.info("🔧 Query Decomposition selected")
     
     # Try to extract input query from JSON first, then fallback to plain text
     input_query = ""
@@ -210,7 +218,7 @@ async def search_validation(ctx: RunContext, input_text: str) -> str:
     Validates if search results adequately answer questions. Use ONLY when input has both search results AND questions.
     Input: JSON with 'search_agent_response' and 'lawyer_question' fields.
     """
-    print("🔧 Search Validation selected")
+    logger.info("🔧 Search Validation selected")
     try:
         data = json.loads(input_text)
         search_agent_response = data.get("search_agent_response", "")
@@ -222,7 +230,7 @@ async def search_validation(ctx: RunContext, input_text: str) -> str:
         result = await search_validation_direct(search_agent_response, lawyer_question)
         return json.dumps(result, indent=2)
     except json.JSONDecodeError:
-        print("   ❌ JSON parsing error - input must be valid JSON with search_agent_response and lawyer_question fields")
+        logger.error("   ❌ JSON parsing error - input must be valid JSON with search_agent_response and lawyer_question fields")
         return json.dumps({"error": "Invalid JSON input - must contain search_agent_response and lawyer_question fields"})
 
 
@@ -270,10 +278,10 @@ async def main():
     
     # Test the problematic case
     test_question = "What is this case about and what are the key legal issues I should focus on?"
-    print(f"Testing: {test_question}")
+    logger.info(f"Testing: {test_question}")
     
     result = await expert.decompose_lawyer_query(test_question)
-    print(f"Result: {result}")
+    logger.info(f"Result: {result}")
 
 if __name__ == "__main__":
     asyncio.run(main())

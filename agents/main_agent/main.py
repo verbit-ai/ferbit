@@ -1,4 +1,6 @@
+import json
 import os
+import logging
 from typing import Dict
 from uuid import uuid4
 
@@ -6,6 +8,13 @@ from dotenv import load_dotenv
 from pydantic_ai import Agent
 
 import httpx
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 from a2a.client import A2ACardResolver, A2AClient
 from a2a.types import (
@@ -61,53 +70,52 @@ async def say_hello(ctx) -> str:
     return "Hello, blablabla! This is a test message from the agent."
 
 
-@agent.tool
-async def get_manning_timeline(ctx, query: str) -> str:
-    """
-    Return Manning timeline information when query contains both 'Manning' and 'Timeline'.
-
-    Args:
-        query: The user's query to check for Manning and Timeline keywords
-
-    Returns:
-        Timeline information if both keywords are present, otherwise a message indicating no match
-    """
-    query_lower = query.lower()
-    if 'manning' in query_lower and 'timeline' in query_lower:
-        return """Timeline of Events
-1. Mr. Manning's Background
-   • For five years before the accident, Mr. Manning lived at 6126 Evergreen Way, Apartment 2, in Huntingtown, Maryland.
-   • He is self-employed as a counselor specializing in mental health and substance abuse.
-
-2. March 13th, 2020 — Day of the Accident
-a. Pre-accident
-   • Around 5:30 p.m., Mr. Manning left his home to drive to Target in Glen Burnie to help his friend Jennifer Ryan shop.
-   • He drove a 2020 Tesla Model X with no reported mechanical issues.
-
-b. Traffic and Detour
-   • Traffic was unusually heavy due to road construction on Main Avenue.
-   • Mr. Manning took a detour via Fifth Street to avoid the construction.
-
-c. Accident Occurs
-   • On Main Avenue in Baltimore County, Mr. Manning collided with Mr. Frederick, a pedestrian.
-   • Mr. Frederick was wearing dark clothing and was not visible until Manning was about 50 feet away.
-   • Manning attempted to brake and steer right but could not avoid the collision.
-
-d. Immediate Aftermath
-   • Bystanders stopped to help.
-   • Mr. Manning briefly contacted Jennifer Ryan to reschedule their meeting.
-   • He also reported the accident to his insurance company and gave a statement to his adjuster.
-
-3. Post-Accident Activities
-   • Manning's attorney contacted the city to obtain traffic camera footage.
-   • Legal proceedings began: the Frederick family filed a lawsuit, and Manning was questioned about the incident.
-
-⸻
-
-This timeline reflects the actual chronological flow of background, event, and post-event details."""
-    else:
-        return "Manning timeline tool activated but query does not contain both 'Manning' and 'Timeline' keywords."
-
+# @agent.tool
+# async def get_manning_timeline(ctx, query: str) -> str:
+#     """
+#     Return Manning timeline information when query contains both 'Manning' and 'Timeline'.
+#
+#     Args:
+#         query: The user's query to check for Manning and Timeline keywords
+#
+#     Returns:
+#         Timeline information if both keywords are present, otherwise a message indicating no match
+#     """
+#     query_lower = query.lower()
+#     if 'manning' in query_lower and 'timeline' in query_lower:
+#         return """Timeline of Events
+# 1. Mr. Manning's Background
+#    • For five years before the accident, Mr. Manning lived at 6126 Evergreen Way, Apartment 2, in Huntingtown, Maryland.
+#    • He is self-employed as a counselor specializing in mental health and substance abuse.
+#
+# 2. March 13th, 2020 — Day of the Accident
+# a. Pre-accident
+#    • Around 5:30 p.m., Mr. Manning left his home to drive to Target in Glen Burnie to help his friend Jennifer Ryan shop.
+#    • He drove a 2020 Tesla Model X with no reported mechanical issues.
+#
+# b. Traffic and Detour
+#    • Traffic was unusually heavy due to road construction on Main Avenue.
+#    • Mr. Manning took a detour via Fifth Street to avoid the construction.
+#
+# c. Accident Occurs
+#    • On Main Avenue in Baltimore County, Mr. Manning collided with Mr. Frederick, a pedestrian.
+#    • Mr. Frederick was wearing dark clothing and was not visible until Manning was about 50 feet away.
+#    • Manning attempted to brake and steer right but could not avoid the collision.
+#
+# d. Immediate Aftermath
+#    • Bystanders stopped to help.
+#    • Mr. Manning briefly contacted Jennifer Ryan to reschedule their meeting.
+#    • He also reported the accident to his insurance company and gave a statement to his adjuster.
+#
+# 3. Post-Accident Activities
+#    • Manning's attorney contacted the city to obtain traffic camera footage.
+#    • Legal proceedings began: the Frederick family filed a lawsuit, and Manning was questioned about the incident.
+#
+# ⸻
+#
+# This timeline reflects the actual chronological flow of background, event, and post-event details."""
+#     else:
+#         return "Manning timeline tool activated but query does not contain both 'Manning' and 'Timeline' keywords."
 
 async def communicate_with_agent(agent_url: str, message: str) -> str:
     """
@@ -126,24 +134,25 @@ async def communicate_with_agent(agent_url: str, message: str) -> str:
                 httpx_client=httpx_client,
                 base_url=agent_url,
             )
+            # Fetch agent card
+            logger.info("📋 Fetching Agent Card...")
             agent_card = await resolver.get_agent_card()
+            logger.info(f"✅ Connected to: {agent_card.name}")
+            logger.info(f"📝 Description: {agent_card.description}")
+            logger.info(f"🔧 Skills: {len(agent_card.skills)}")
+            logger.info(f"🔧 url: {agent_card.url}")
+            for skill in agent_card.skills:
+                logger.info(f"   - {skill.name}")
             client = A2AClient(
                 httpx_client=httpx_client,
                 agent_card=agent_card
             )
 
-            # Format message as JSON for localhost:8003 agents
-            if EXPERT_AGENT_URL in agent_url:
-                import json
-                formatted_message = json.dumps({"input_query": message})
-            else:
-                formatted_message = message
-
-            print(f"Communicating with agent at {agent_url} with message: {message}")
+            logger.info(f"Communicating with agent at {agent_url} with message: {message}")
             user_message = Message(
                 message_id=str(uuid4()),
-                role=Role.agent,
-                parts=[TextPart(text=formatted_message)]
+                role=Role.user,
+                parts=[TextPart(text=message)]
             )
 
             # Create SendMessageRequest
@@ -184,10 +193,12 @@ async def send_message_to_agent(ctx, agent_name: str, message: str) -> str:
     return await communicate_with_agent(agent_url, message)
 
 
+
+
 # Main entry point
 async def main():
     result = await agent.run("Which agent can you trigger")
-    print(result.output)
+    logger.info(result.output)
 
 if __name__ == '__main__':
     import asyncio

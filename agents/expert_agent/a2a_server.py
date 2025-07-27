@@ -1,10 +1,16 @@
+import logging
 import uvicorn
 from a2a.server.apps import A2AStarletteApplication
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.tasks import InMemoryTaskStore
 from a2a.types import AgentCard, AgentSkill, AgentCapabilities
+from starlette.middleware.cors import CORSMiddleware
+
 
 from agent_executor import LegalExpertAgentExecutor
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 
 def create_agent_card() -> AgentCard:
@@ -40,11 +46,11 @@ def create_agent_card() -> AgentCard:
         name="Legal Expert Agent",
         description="Expert agent that provides query decomposition and search validation for legal case research. Breaks down complex lawyer questions into searchable components and validates search responses for completeness.",
         version="1.0.0",
-        url="http://localhost:8003/",
+        url="http://expert-agent:8003/",
         capabilities=capabilities,
         skills=[query_decomposition_skill, search_validation_skill],
-        default_input_modes=["application/json"],
-        default_output_modes=["application/json"]
+        default_input_modes=["text/plain"],
+        default_output_modes=["text/plain"]
     )
 
     return agent_card
@@ -64,12 +70,21 @@ def main():
     )
     app = server_app_builder.build()
 
-    print("Starting Legal Expert Agent A2A Server...")
-    print("Agent Card will be available at: http://localhost:8003/.well-known/agent.json")
-    print("Legal expert agent ready with 2 skills (automatic tool selection):")
-    print("1. Query Decomposition - Send: {\"input_query\": \"...\"}")
-    print("2. Search Validation - Send: {\"search_agent_response\": \"...\", \"lawyer_question\": \"...\"}")
-    print("Press CTRL+C to stop the server")
+    # Add CORS middleware for all clients and methods
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # Allow all origins
+        allow_credentials=True,
+        allow_methods=["*"],  # Allow all methods
+        allow_headers=["*"],  # Allow all headers
+    )
+
+    logger.info("Starting Legal Expert Agent A2A Server...")
+    logger.info("Agent Card will be available at: http://localhost:8003/.well-known/agent.json")
+    logger.info("Legal expert agent ready with 2 skills (automatic tool selection):")
+    logger.info("1. Query Decomposition - Send: {\"input_query\": \"...\"}")
+    logger.info("2. Search Validation - Send: {\"search_agent_response\": \"...\", \"lawyer_question\": \"...\"}")
+    logger.info("Press CTRL+C to stop the server")
 
     uvicorn.run(
         app,

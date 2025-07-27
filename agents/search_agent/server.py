@@ -33,12 +33,8 @@ def get_agent_card(host: str = "localhost", port: int = 8001) -> AgentCard:
     return AgentCard(
         name='Search Agent',
         description='An intelligent search agent that can query collections and provide relevant information using MCP integration.',
-        url=f'http://{host}:{port}',
+        url='http://search-agent:8001/',
         version='1.0.0',
-        provider=AgentProvider(
-            organization='Ferbit Research',
-            url='https://ferbit.example.com'
-        ),
         capabilities=capabilities,
         skills=[search_skill],
         default_input_modes=['text/plain'],
@@ -246,5 +242,4 @@ class SearchAgentExecutor(AgentExecutor):
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
         """Request the agent to cancel an ongoing task."""
         # This method would handle task cancellation
-        pass
-
+ 

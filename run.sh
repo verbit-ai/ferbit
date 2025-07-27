@@ -64,8 +64,8 @@ if ! command -v aws &> /dev/null; then
 fi
 
 # Check AWS credentials
-if ! aws sts get-caller-identity --profile staging &>/dev/null; then
-    echo -e "${RED}❌ AWS credentials not configured for 'staging' profile${NC}"
+if ! aws sts get-caller-identity --profile verbit-staging &>/dev/null; then
+    echo -e "${RED}❌ AWS credentials not configured for 'verbit-staging' profile${NC}"
     exit 1
 fi
 
@@ -90,7 +90,7 @@ sleep 3
 
 # Step 1: Start SSM tunnel
 echo -e "${YELLOW}🔗 Starting AWS SSM tunnel...${NC}"
-AWS_PROFILE=staging aws --region eu-west-1 ssm start-session \
+AWS_PROFILE=verbit-staging aws --region eu-west-1 ssm start-session \
     --target i-041af79ea7c7d1f02 \
     --document-name AWS-StartPortForwardingSessionToRemoteHost \
     --parameters '{"host":["vpc-opensearch-ferret-stagging-4fp5wiub5owfti2shyjkdfrday.eu-west-1.es.amazonaws.com"],"portNumber":["443"], "localPortNumber":["9201"]}' &

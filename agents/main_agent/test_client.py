@@ -29,17 +29,9 @@ async def main() -> None:
                 httpx_client=httpx_client,
                 base_url=base_url,
             )
-            
             # Fetch agent card
-            print("📋 Fetching Agent Card...")
             agent_card = await resolver.get_agent_card()
-            print(f"✅ Connected to: {agent_card.name}")
-            print(f"📝 Description: {agent_card.description}")
-            print(f"🔧 Skills: {len(agent_card.skills)}")
-            for skill in agent_card.skills:
-                print(f"   - {skill.name}")
-            print()
-            
+
             client = A2AClient(
                 httpx_client=httpx_client, 
                 agent_card=agent_card
@@ -47,8 +39,9 @@ async def main() -> None:
             logger.info('A2AClient initialized for streaming.')
             
             test_messages = [
-                "What agents are available and what can they do?",
-                "I need for additional information about particular case named - Johnny Depp and Amber Heard",
+                # "What agents are available and what can they do?",
+                # '{"input_query": "I want to have a deposition in Johnny Depp and Amber Heard case, based on the context of the case - what should I ask the defendant?"}',
+                "Please Search about manning case",
             ]
             
             for i, message_text in enumerate(test_messages, 1):
