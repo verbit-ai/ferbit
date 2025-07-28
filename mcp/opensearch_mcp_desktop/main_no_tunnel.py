@@ -1,0 +1,177 @@
+import subprocess
+import time
+import os
+import atexit
+import logging
+from typing import List, Dict, Any, Optional
+from fastmcp import FastMCP
+from opensearchpy import OpenSearch
+from pydantic import BaseModel, Field
+
+# Configure logging
+log_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'opensearch_mcp.log')
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(log_file_path),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
+class SearchQuery(BaseModel):
+    query: str = Field(description="The search query string")
+    index: str = Field(default="_all", description="The index to search in")
+    size: int = Field(default=10, description="Number of results to return")
+    from_: int = Field(default=0, alias="from", description="Starting position for results")
+
+class SearchResult(BaseModel):
+    total_hits: int = Field(description="Total number of matching documents")
+    max_score: Optional[float] = Field(description="Maximum relevance score")
+    hits: List[Dict[str, Any]] = Field(description="Search result documents")
+    took: int = Field(description="Time taken for search in milliseconds")
+
+class SearchMCPServer:
+    def __init__(self):
+        logger.info("[INIT] Initializing SearchMCPServer (no tunnel mode)")
+        self.app = FastMCP("Search MCP Server")
+        self.tunnel_process = None
+        self.opensearch_client = None
+        # Skip tunnel setup - assume tunnel is already established on host
+        self.setup_opensearch_client()
+        self.register_tools()
+        
+        # Register cleanup on exit
+        atexit.register(self.cleanup)
+        logger.info("[INIT] SearchMCPServer initialization completed")
+    
+    def setup_opensearch_client(self):
+        """Setup OpenSearch client"""
+        logger.info("[OPENSEARCH] Setting up OpenSearch client...")
+        
+        try:
+            # Use environment variables for host and port, with defaults
+            opensearch_host = os.getenv('OPENSEARCH_HOST', 'localhost')
+            opensearch_port = int(os.getenv('OPENSEARCH_PORT', '9201'))
+            
+            client_config = {
+                'hosts': [{'host': opensearch_host, 'port': opensearch_port}],
+                'http_compress': True,
+                'http_auth': None,
+                'use_ssl': True,
+                'verify_certs': False,
+                'ssl_assert_hostname': False,
+                'ssl_show_warn': False,
+                'timeout': 30,
+            }
+            
+            logger.info(f"[OPENSEARCH] Client config: {client_config}")
+            
+            self.opensearch_client = OpenSearch(**client_config)
+            
+            # Test connection
+            logger.info("[OPENSEARCH] Testing connection...")
+            info = self.opensearch_client.info()
+            version = info['version']['number']
+            logger.info(f"[OPENSEARCH] Successfully connected to OpenSearch version: {version}")
+            print(f"Connected to OpenSearch: {version}")
+            
+        except Exception as e:
+            logger.error(f"[OPENSEARCH] Failed to setup OpenSearch client: {e}")
+            print(f"Failed to setup OpenSearch client: {e}")
+            raise
+    
+    def register_tools(self):
+        """Register MCP tools"""
+        @self.app.tool()
+        def search(query: str, index: str, size: int = 10, from_: int = 0) -> SearchResult:
+            """Search OpenSearch for documents matching the query"""
+            logger.info(f"[SEARCH_TOOL] Called with params - query: '{query}', index: '{index}', size: {size}, from: {from_}")
+            print(f"MCP TOOL CALLED: search(query='{query}', index='{index}', size={size}, from={from_})")
+            
+            real_index = index + "_text"
+            logger.info(f"[SEARCH_TOOL] Using real index: '{real_index}'")
+            
+            try:
+                search_body = {
+                    "query": {
+                        "multi_match": {
+                            "query": query,
+                            "fields": ["_all", "*"]
+                        }
+                    },
+                    "size": size,
+                    "from": from_
+                }
+                
+                logger.info(f"[SEARCH_TOOL] Search body: {search_body}")
+                
+                response = self.opensearch_client.search(
+                    index=real_index,
+                    body=search_body
+                )
+                
+                logger.debug(f"[SEARCH_TOOL] Raw OpenSearch response: {response}")
+                
+                result = SearchResult(
+                    total_hits=response['hits']['total']['value'] if isinstance(response['hits']['total'], dict) else response['hits']['total'],
+                    max_score=response['hits']['max_score'],
+                    hits=[hit for hit in response['hits']['hits']],
+                    took=response['took']
+                )
+                
+                logger.info(f"[SEARCH_TOOL] Search completed - Found {result.total_hits} hits in {result.took}ms, max_score: {result.max_score}")
+                print(f"SEARCH RESULT: Found {result.total_hits} hits in {result.took}ms")
+                
+                # Log hit details (truncated for readability)
+                for i, hit in enumerate(result.hits[:3]):  # Log first 3 hits
+                    logger.info(f"[SEARCH_TOOL] Hit {i+1}: score={hit.get('_score')}, source_preview={str(hit.get('_source', {}))[:100]}...")
+                
+                return result
+                
+            except Exception as e:
+                logger.error(f"[SEARCH_TOOL] Search error for query '{query}' on index '{real_index}': {e}")
+                print(f"Search error: {e}")
+                # Return empty result on error
+                empty_result = SearchResult(
+                    total_hits=0,
+                    max_score=None,
+                    hits=[],
+                    took=0
+                )
+                logger.info(f"[SEARCH_TOOL] Returning empty result due to error")
+                return empty_result
+    
+    def cleanup(self):
+        """Clean up resources"""
+        logger.info("[CLEANUP] Starting cleanup process...")
+        # No tunnel to clean up in this version
+        logger.info("[CLEANUP] Cleanup completed")
+    
+    def run(self):
+        """Run the MCP server"""
+        logger.info("[SERVER] Starting MCP server on port 8000 with SSE transport...")
+        
+        try:
+            self.app.run(transport="sse", host="0.0.0.0", port=8000)
+        except KeyboardInterrupt:
+            logger.info("[SERVER] Received keyboard interrupt, shutting down...")
+            print("\nShutting down...")
+        except Exception as e:
+            logger.error(f"[SERVER] Server error: {e}")
+            raise
+        finally:
+            logger.info("[SERVER] Server stopped, performing cleanup...")
+            self.cleanup()
+
+if __name__ == '__main__':
+    logger.info("[MAIN] Starting SearchMCPServer application (no tunnel mode)...")
+    try:
+        server = SearchMCPServer()
+        server.run()
+    except Exception as e:
+        logger.error(f"[MAIN] Fatal error: {e}")
+        raise
+    finally:
+        logger.info("[MAIN] Application terminated")
