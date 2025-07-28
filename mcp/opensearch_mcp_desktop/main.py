@@ -49,11 +49,10 @@ class SearchMCPServer:
     def setup_tunnel(self):
         """Setup AWS SSM tunnel to OpenSearch"""
         logger.info("[TUNNEL] Setting up AWS SSM tunnel to OpenSearch...")
-        print("Setting up AWS SSM tunnel to OpenSearch...")
-        
+
         # Set AWS profile
-        os.environ['AWS_PROFILE'] = 'staging'
-        logger.info("[TUNNEL] AWS_PROFILE set to 'staging'")
+        os.environ['AWS_PROFILE'] = 'verbit-staging'
+        logger.info("[TUNNEL] AWS_PROFILE set to 'verbit-staging'")
         
         # Start SSM port forwarding session
         cmd = [
@@ -77,11 +76,9 @@ class SearchMCPServer:
             # Wait a bit for tunnel to establish
             time.sleep(5)
             logger.info("[TUNNEL] AWS SSM tunnel established on port 9201")
-            print("AWS SSM tunnel established on port 9201")
-            
+
         except Exception as e:
             logger.error(f"[TUNNEL] Failed to setup AWS SSM tunnel: {e}")
-            print(f"Failed to setup AWS SSM tunnel: {e}")
             raise
     
     def setup_opensearch_client(self):
@@ -109,21 +106,18 @@ class SearchMCPServer:
             info = self.opensearch_client.info()
             version = info['version']['number']
             logger.info(f"[OPENSEARCH] Successfully connected to OpenSearch version: {version}")
-            print(f"Connected to OpenSearch: {version}")
-            
+
         except Exception as e:
             logger.error(f"[OPENSEARCH] Failed to setup OpenSearch client: {e}")
-            print(f"Failed to setup OpenSearch client: {e}")
             raise
     
     def register_tools(self):
         """Register MCP tools"""
         @self.app.tool()
-        def search(query: str, index: str, size: int = 10, from_: int = 0) -> SearchResult:
+        def search(query: str, index: str = '77ca74f6-c5c6-4505-ad57-499283826b87', size: int = 10, from_: int = 0) -> SearchResult:
             """Search OpenSearch for documents matching the query"""
             logger.info(f"[SEARCH_TOOL] Called with params - query: '{query}', index: '{index}', size: {size}, from: {from_}")
-            print(f"MCP TOOL CALLED: search(query='{query}', index='{index}', size={size}, from={from_})")
-            
+
             real_index = index + "_text"
             logger.info(f"[SEARCH_TOOL] Using real index: '{real_index}'")
             
@@ -156,8 +150,7 @@ class SearchMCPServer:
                 )
                 
                 logger.info(f"[SEARCH_TOOL] Search completed - Found {result.total_hits} hits in {result.took}ms, max_score: {result.max_score}")
-                print(f"SEARCH RESULT: Found {result.total_hits} hits in {result.took}ms")
-                
+
                 # Log hit details (truncated for readability)
                 for i, hit in enumerate(result.hits[:3]):  # Log first 3 hits
                     logger.info(f"[SEARCH_TOOL] Hit {i+1}: score={hit.get('_score')}, source_preview={str(hit.get('_source', {}))[:100]}...")
@@ -166,7 +159,6 @@ class SearchMCPServer:
                 
             except Exception as e:
                 logger.error(f"[SEARCH_TOOL] Search error for query '{query}' on index '{real_index}': {e}")
-                print(f"Search error: {e}")
                 # Return empty result on error
                 empty_result = SearchResult(
                     total_hits=0,
@@ -183,7 +175,6 @@ class SearchMCPServer:
         
         if self.tunnel_process:
             logger.info("[CLEANUP] Terminating AWS SSM tunnel...")
-            print("Terminating AWS SSM tunnel...")
             try:
                 self.tunnel_process.terminate()
                 self.tunnel_process.wait(timeout=10)
@@ -201,13 +192,12 @@ class SearchMCPServer:
     
     def run(self):
         """Run the MCP server"""
-        logger.info("[SERVER] Starting MCP server on port 8000 with SSE transport...")
+        logger.info("[SERVER] Starting MCP server with stdio transport...")
         
         try:
-            self.app.run(transport="sse", host="0.0.0.0", port=8000)
+            self.app.run(transport="stdio")
         except KeyboardInterrupt:
             logger.info("[SERVER] Received keyboard interrupt, shutting down...")
-            print("\nShutting down...")
         except Exception as e:
             logger.error(f"[SERVER] Server error: {e}")
             raise

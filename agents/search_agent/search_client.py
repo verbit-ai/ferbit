@@ -91,6 +91,67 @@ class SearchAgentClient:
                 return response_data
             else:
                 raise Exception(f"Request failed with status {response.status_code}: {response.text}")
+
+    async def search_stream(self, query: str, collection_id: str, message_id: Optional[str] = None):
+        """
+        Send a search query to the search agent and stream the response
+        
+        Args:
+            query: The search query text
+            collection_id: The collection ID to search in
+            message_id: Optional message ID, will generate one if not provided
+            
+        Yields:
+            Streaming chunks from the search agent
+        """
+        if message_id is None:
+            message_id = str(uuid4())
+        
+        request_payload = {
+            "jsonrpc": "2.0",
+            "id": str(uuid4()),
+            "method": "message/stream",
+            "params": {
+                "message": {
+                    "message_id": message_id,
+                    "role": "user",
+                    "parts": [
+                        {
+                            "kind": "text",
+                            "text": query
+                        }
+                    ],
+                    "kind": "message"
+                }
+            }
+        }
+        
+        print(f"🔍 Sending streaming request to search agent...")
+        print(f"📋 Request payload: {json.dumps(request_payload, indent=2)}")
+        
+        # Use longer timeout for complex search operations
+        long_timeout = httpx.Timeout(120.0)  # 2 minutes
+        
+        async with httpx.AsyncClient(timeout=long_timeout) as client:
+            async with client.stream(
+                "POST",
+                self.agent_url,
+                json=request_payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-Context-Id": collection_id
+                }
+            ) as response:
+                
+                print(f"📬 Received streaming response with status: {response.status_code}")
+                
+                if response.status_code == 200:
+                    async for chunk in response.aiter_text():
+                        if chunk.strip():
+                            print(f"📦 Received chunk: {chunk[:100]}...")
+                            yield chunk
+                else:
+                    raise Exception(f"Request failed with status {response.status_code}: {await response.aread()}")
     
     async def wait_for_task_completion(self, initial_response: Dict[str, Any], max_wait_time: int = 60) -> Dict[str, Any]:
         """

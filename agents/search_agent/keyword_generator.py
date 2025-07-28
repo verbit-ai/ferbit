@@ -46,6 +46,8 @@ Focus on terms that would likely appear in:
 - Expert reports
 - Case documentation
 
+IMPORTANT: Generate a maximum of the 20 most relevant keywords only.
+
 Output format: comma-separated list of keywords only, no explanations."""
 
         logger.info(f"[KEYWORD_GEN] About to call OpenAI directly with prompt: {keyword_prompt}")
