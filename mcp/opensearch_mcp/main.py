@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 class SearchQuery(BaseModel):
     query: str = Field(description="The search query string")
     index: str = Field(default="_all", description="The index to search in")
-    size: int = Field(default=10, description="Number of results to return")
+    size: int = Field(default=3, description="Number of results to return")
     from_: int = Field(default=0, alias="from", description="Starting position for results")
 
 class SearchResult(BaseModel):
@@ -119,7 +119,7 @@ class SearchMCPServer:
     def register_tools(self):
         """Register MCP tools"""
         @self.app.tool()
-        def search(query: str, index: str, size: int = 10, from_: int = 0) -> SearchResult:
+        def search(query: str, index: str, size: int = 3, from_: int = 0) -> SearchResult:
             """Search OpenSearch for documents matching the query"""
             logger.info(f"[SEARCH_TOOL] Called with params - query: '{query}', index: '{index}', size: {size}, from: {from_}")
             print(f"MCP TOOL CALLED: search(query='{query}', index='{index}', size={size}, from={from_})")

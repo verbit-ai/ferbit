@@ -11,6 +11,7 @@ from langgraph.checkpoint.memory import MemorySaver
 
 from mcp_tools import get_search_tools
 from keyword_generator import generate_legal_keywords
+from rate_limiter import openai_rate_limiter
 
 
 if "OPENAI_API_KEY" not in os.environ:
@@ -29,7 +30,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Initialize these globally
-response_model = init_chat_model("openai:gpt-4o", temperature=0)
+response_model = init_chat_model("openai:gpt-4o-mini", temperature=0)
 memory = MemorySaver()
 
 
@@ -56,13 +57,13 @@ class SearchAgent:
             )
             self._initialized = True
 
-    async def ainvoke(self, query: str, collection_id: UUID = "77ca74f6-c5c6-4505-ad57-499283826b87") -> Any:
+    async def ainvoke(self, query: str, collection_id: UUID = "5d3bcf72-d167-482d-bd1b-156ac5026c20") -> Any:
         """Invoke the agent asynchronously using streaming internally"""
         logger.info(f"[AINVOKE] Starting search with query: '{query}', collection_id: {collection_id}")
 
         await self._initialize_if_needed()
 
-        collection_id = "77ca74f6-c5c6-4505-ad57-499283826b87"
+        collection_id = "5d3bcf72-d167-482d-bd1b-156ac5026c20"
         if collection_id is None:
             error_msg = "Error: collection_id is required for search operations. Please provide a valid collection_id."
             logger.error(f"[AINVOKE] {error_msg}")
@@ -93,11 +94,15 @@ Provide only a direct answer to the user's query based on the search results wit
 
         messages = [HumanMessage(content=search_prompt)]
         
-        # Use streaming internally but collect all chunks for final result
+        # Use streaming internally but collect all chunks for final result with rate limiting
         logger.info(f"[AINVOKE] Using internal streaming to process request")
         all_chunks = []
         
-        async for chunk in self.graph.astream({"messages": messages}, config):
+        async def run_graph_stream():
+            async for chunk in self.graph.astream({"messages": messages}, config):
+                yield chunk
+        
+        async for chunk in openai_rate_limiter.stream_with_backoff(run_graph_stream):
             logger.debug(f"[AINVOKE] Received streaming chunk: {str(chunk)[:100]}...")
             all_chunks.append(chunk)
         
@@ -130,13 +135,13 @@ Provide only a direct answer to the user's query based on the search results wit
 
         return final_result
 
-    async def stream(self, query: str, collection_id: UUID = "77ca74f6-c5c6-4505-ad57-499283826b87", context_id: str = None):
+    async def stream(self, query: str, collection_id: UUID = "5d3bcf72-d167-482d-bd1b-156ac5026c20", context_id: str = None):
         """Stream agent responses"""
         logger.info(f"[STREAM] Starting stream with query: '{query}', collection_id: {collection_id}, context_id: {context_id}")
 
         await self._initialize_if_needed()
 
-        collection_id = "77ca74f6-c5c6-4505-ad57-499283826b87"
+        collection_id = "5d3bcf72-d167-482d-bd1b-156ac5026c20"
         if collection_id is None:
             error_msg = "Error: collection_id is required for search operations. Please provide a valid collection_id."
             logger.error(f"[STREAM] {error_msg}")
@@ -168,7 +173,11 @@ Provide only a direct answer to the user's query based on the search results wit
 
         messages = [HumanMessage(content=search_prompt)]
 
-        async for chunk in self.graph.astream({"messages": messages}, config):
+        async def run_graph_stream():
+            async for chunk in self.graph.astream({"messages": messages}, config):
+                yield chunk
+
+        async for chunk in openai_rate_limiter.stream_with_backoff(run_graph_stream):
             logger.debug(f"[STREAM] Chunk received: {str(chunk)[:100]}...")
             yield chunk
 

@@ -33,7 +33,7 @@ def get_agent_card(host: str = "localhost", port: int = 8001) -> AgentCard:
     return AgentCard(
         name='Search Agent',
         description='An intelligent search agent that can query collections and provide relevant information using MCP integration.',
-        url='http://search-agent:8001/',
+        url=f'http://{host}:{port}/',
         version='1.0.0',
         capabilities=capabilities,
         skills=[search_skill],

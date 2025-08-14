@@ -46,7 +46,7 @@ def create_agent_card() -> AgentCard:
         name="Legal Expert Agent",
         description="Expert agent that provides query decomposition and search validation for legal case research. Breaks down complex lawyer questions into searchable components and validates search responses for completeness.",
         version="1.0.0",
-        url="http://expert-agent:8003/",
+        url="http://127.0.0.1:8003/",
         capabilities=capabilities,
         skills=[query_decomposition_skill, search_validation_skill],
         default_input_modes=["text/plain"],

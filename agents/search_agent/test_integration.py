@@ -32,8 +32,11 @@ class TestRunner:
         env = os.environ.copy()
         env['AWS_PROFILE'] = 'staging'
         
+        env['USE_SSL'] = 'false'
+        env['OPENSEARCH_PORT'] = '9200'
+        
         self.mcp_process = subprocess.Popen(
-            ["python", "main.py"],
+            ["python", "main_no_tunnel.py"],
             cwd=mcp_dir,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

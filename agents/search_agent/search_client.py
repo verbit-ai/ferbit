@@ -222,7 +222,7 @@ class SearchAgentClient:
 
 async def main():
     """Example usage of the SearchAgentClient"""
-    client = SearchAgentClient()
+    client = SearchAgentClient("http://localhost:8001")
     
     # Wait for agent to be ready
     print("Waiting for search agent to be ready...")
@@ -231,21 +231,50 @@ async def main():
         return
     
     # Send a search query
-    collection_id = "77ca74f6-c5c6-4505-ad57-499283826b87"
-    query = "please describe the flow of events which include mr. manning and mr. frederick"
+    collection_id = "5d3bcf72-d167-482d-bd1b-156ac5026c20"
+    query = "Who are the witnesses?"
     
     try:
         print(f"Sending query: {query}")
-        response = await client.search(query, collection_id)
         
-        print("Response received:")
+        # First try to get initial response
+        response = await client.search(query, collection_id)
+        print("Initial response received:")
         print(json.dumps(response, indent=2))
         
-        # Extract and print just the text
-        text = client.extract_text_from_response(response)
-        if text:
-            print("\nExtracted text:")
-            print(text)
+        # Wait for task completion to get the full results
+        final_response = await client.wait_for_task_completion(response, max_wait_time=120)
+        
+        # Try streaming to get the complete response
+        print("\nTrying streaming approach to get complete results...")
+        full_text = ""
+        async for chunk in client.search_stream(query, collection_id):
+            if chunk.strip():
+                try:
+                    chunk_data = json.loads(chunk)
+                    if "result" in chunk_data and "status" in chunk_data["result"]:
+                        message = chunk_data["result"]["status"].get("message", {})
+                        for part in message.get("parts", []):
+                            if part.get("kind") == "text":
+                                text_content = part.get("text", "")
+                                full_text += text_content
+                                print(f"📄 Received: {text_content}")
+                except json.JSONDecodeError:
+                    # Handle non-JSON chunks
+                    print(f"📄 Raw chunk: {chunk}")
+                    full_text += chunk
+        
+        if full_text:
+            print("\n" + "="*50)
+            print("COMPLETE RESPONSE:")
+            print("="*50)
+            print(full_text)
+        else:
+            # Fallback to extract from final response
+            text = client.extract_text_from_response(final_response)
+            if text:
+                print("\nExtracted text from final response:")
+                print(text)
     
     except Exception as e:
         print(f"Error: {e}")

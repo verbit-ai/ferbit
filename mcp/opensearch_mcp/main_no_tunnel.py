@@ -53,13 +53,14 @@ class SearchMCPServer:
         try:
             # Use environment variables for host and port, with defaults
             opensearch_host = os.getenv('OPENSEARCH_HOST', 'localhost')
-            opensearch_port = int(os.getenv('OPENSEARCH_PORT', '9201'))
+            opensearch_port = int(os.getenv('OPENSEARCH_PORT', '5601'))
+            use_ssl = os.getenv('USE_SSL', 'true').lower() == 'true'
             
             client_config = {
                 'hosts': [{'host': opensearch_host, 'port': opensearch_port}],
                 'http_compress': True,
                 'http_auth': None,
-                'use_ssl': True,
+                'use_ssl': use_ssl,
                 'verify_certs': False,
                 'ssl_assert_hostname': False,
                 'ssl_show_warn': False,

@@ -15,7 +15,7 @@ RUN uv sync --frozen
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
-ENV OPENAI_API_KEY=""
+ENV OPENAI_API_KEY="add_api_key"
 ENV MCP_SERVER_URL="http://localhost:8000/sse"
 
 # Expose port for the search agent
